@@ -608,7 +608,7 @@ export class QuiesceRejectedError extends Error {
 	}
 }
 
-import { splitAgentStartPrompt, WINDOWS_PERSONA } from "./persona-chain.js";
+import { applySubagentTemplateCustomPrompt, splitAgentStartPrompt, WINDOWS_PERSONA } from "./persona-chain.js";
 export { splitAgentStartPrompt };
 
 import { makeKillableBashTool, makeAdaptiveBashTool } from "./bash-tool.js";
@@ -5191,11 +5191,13 @@ export class ClientSession {
 										staleSafe((event) => {
 											const { core, rewrap } = prepareBotExecutionSystemPrompt(event, botExecution);
 											if (apply) {
-												const tplPrompt = this.templatePrompt(apply).trim();
-												if (apply.promptMode !== "replace" || !tplPrompt) return undefined;
+												const tplPrompt = this.templatePrompt(apply);
+												if (apply.promptMode !== "replace" || !tplPrompt.trim()) return undefined;
+												if (applySubagentTemplateCustomPrompt(event, tplPrompt)) return undefined;
+												// Compatibility fallback for SDK versions without structured prompt options.
 												const boundary = core.indexOf("\n\nAvailable tools:");
 												const swapped = rewrap(
-													boundary === -1 ? `${tplPrompt}\n\n${core}` : tplPrompt + core.slice(boundary),
+													boundary === -1 ? `${tplPrompt.trim()}\n\n${core}` : tplPrompt.trim() + core.slice(boundary),
 												);
 												return swapped === event.systemPrompt ? undefined : { systemPrompt: swapped };
 											}
