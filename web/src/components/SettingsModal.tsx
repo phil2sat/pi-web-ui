@@ -6782,6 +6782,8 @@ function LoadedSettingsModal({
 												enabled: true,
 												// 新建模板显式定为常规：不让名字里的 explore / review 把用户新写的模板悄悄锁成只读
 												securityMode: "normal" as const,
+												allowedTools: undefined,
+												readOnlyTools: [],
 											});
 											setTplIsNew(true);
 										}}
@@ -6850,6 +6852,8 @@ function LoadedSettingsModal({
 										skills={settings.skills}
 										extensions={settings.extensions}
 										models={settings.subagentModels}
+										tools={settings.availableSubagentTools ?? []}
+										readOnlyToolRegistry={settings.readOnlyToolRegistry ?? []}
 										onChange={setTplDraft}
 										onClose={() => setTplDraft(null)}
 										onSave={(d) => {

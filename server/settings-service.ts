@@ -17,6 +17,8 @@ import type {
 	UiSkillInfo,
 	UiToolPromptOverride,
 	UiVisionBridgeModel,
+	UiSubagentToolInfo,
+	UiReadOnlyToolRule,
 } from "./protocol.js";
 import {
 	extensionKey,
@@ -46,6 +48,7 @@ import { findVisionModels, SYSTEM_PROMPT } from "./vision-bridge.js";
 import { COMMITMSG_SYSTEM_PROMPT } from "./scm-commitmsg.js";
 import { PLAN_MODE_SYSTEM_PROMPT } from "./plan-mode.js";
 import { DEFAULT_TEMPLATES, localizeTemplate, type SubagentTemplatesStore } from "./subagent-templates.js";
+import { DEFAULT_READ_ONLY_TOOL_REGISTRY, mergeReadOnlyToolRules } from "./read-only-tool-registry.js";
 import { resolveSecurityMode } from "./subagent-security-gate.js";
 import { discoverDiskSkills, isSkillStillOnDisk, type DiscoveredSkill } from "./skill-discovery.js";
 import type { ApprovalRulesStore } from "./approval-rules.js";
@@ -600,6 +603,8 @@ export class SettingsService {
 					// 否则用户以为「常规」、实际按名字被当成 readonly。
 					securityMode: resolveSecurityMode(t.name, t),
 				})),
+				availableSubagentTools: this.collectSubagentTools(),
+				readOnlyToolRegistry: this.getReadOnlyToolRegistry(),
 				subagentDefaultTemplates: DEFAULT_TEMPLATES.map((t) => t.name),
 				subagentDefaultModel: this.settings.subagentDefaultModel ?? null,
 				subagentMaxDepth: this.settings.subagentMaxDepth ?? 0,
@@ -624,6 +629,26 @@ export class SettingsService {
 				mcpProjectConfigPath: mcp.projectPath,
 			} satisfies UiSettingsState,
 		});
+	}
+
+	getReadOnlyToolRegistry(): UiReadOnlyToolRule[] {
+		return mergeReadOnlyToolRules(DEFAULT_READ_ONLY_TOOL_REGISTRY, this.templates.readOnlyToolRegistry());
+	}
+
+	private collectSubagentTools(): UiSubagentToolInfo[] {
+		try {
+			return this.host.getSession().getAllTools().map((tool) => {
+				const parameters = tool.parameters as { properties?: Record<string, { enum?: unknown[] }> } | undefined;
+				const actionParameter = ["action", "op"].find((key) => parameters?.properties?.[key]);
+				const values = actionParameter ? parameters?.properties?.[actionParameter]?.enum : undefined;
+				return {
+					name: tool.name,
+					...(typeof tool.description === "string" ? { description: tool.description } : {}),
+					...(actionParameter ? { actionParameter } : {}),
+					...(Array.isArray(values) ? { actions: values.filter((value): value is string => typeof value === "string") } : {}),
+				};
+			}).sort((a, b) => a.name.localeCompare(b.name));
+		} catch { return []; }
 	}
 
 	private collectVisionModels(): UiVisionBridgeModel[] {

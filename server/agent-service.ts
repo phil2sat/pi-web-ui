@@ -329,6 +329,7 @@ import {
 	PLAN_MODE_BLOCKED_TOOL_NAMES,
 	syncTerminalReadOnlySchema,
 } from "./plan-mode.js";
+import { isReadOnlyToolRegistered } from "./read-only-tool-registry.js";
 import { DELEGATE_MODE_BLOCKED_TOOL_NAMES, DELEGATION_SYSTEM_PROMPT, delegateNoticeText } from "./delegate-mode.js";
 import { goalReviewDenial, shouldDeferPromptForReview } from "./goal-review-gate.js";
 import { readPlanModeFromSession, readPlanFromSession, type SessionPlanEvent } from "./permission-preset.js";
@@ -1893,9 +1894,8 @@ export class ClientSession {
 				this.resolveExecution(conversationIdentity(conv))?.session.subagentTaskPending(conv) ?? false;
 			const securityMode = extra?.securityMode ?? resolveSecurityMode(type, apply);
 			conv.subagentSecurityMode = securityMode;
-			if (extra?.allowedTools && extra.allowedTools.length > 0) {
-				conv.subagentAllowedTools = new Set(extra.allowedTools);
-			}
+			const templateAllowedTools = extra?.allowedTools ?? apply?.allowedTools;
+			if (templateAllowedTools !== undefined) conv.subagentAllowedTools = new Set(templateAllowedTools);
 			if (securityMode === "readonly" && !conv.permissionPreset) {
 				conv.permissionPreset = "read-only";
 			}
@@ -3482,7 +3482,7 @@ export class ClientSession {
 	private disabledToolSet(session: AgentSession, conv: Conversation | undefined, all: readonly string[]): Set<string> {
 		const disabled = new Set(effectiveDisabledAgentTools(this.settingsSvc.current));
 		if (conv?.planMode === true) for (const n of PLAN_MODE_BLOCKED_TOOL_NAMES) disabled.add(n);
-		if (conv?.subagentAllowedTools && conv.subagentAllowedTools.size > 0) {
+		if (conv?.subagentAllowedTools) {
 			for (const t of all) {
 				if (!conv.subagentAllowedTools.has(t)) disabled.add(t);
 			}
@@ -10399,6 +10399,8 @@ export class ClientSession {
 								),
 								() => this.planModeOf(ownerId),
 								() => this.getLang(),
+
+								() => this.settingsSvc.getReadOnlyToolRegistry(),
 							),
 							() => this.delegateModeOf(ownerId),
 							() => this.getLang(),
@@ -10409,6 +10411,7 @@ export class ClientSession {
 					() => ({
 						mode: this.subagentSecurityModeOf(ownerId),
 						allowedTools: this.subagentAllowedToolsOf(ownerId),
+						readOnlyTools: this.settingsSvc.getReadOnlyToolRegistry(),
 					}),
 					() => this.getLang(),
 				),
@@ -10670,12 +10673,17 @@ export class ClientSession {
 			for (const toolName of PLAN_MODE_BLOCKED_TOOL_NAMES) {
 				disabled.add(toolName);
 			}
+			const readOnlyRegistry = this.settingsSvc.getReadOnlyToolRegistry();
+			for (const tool of session.getAllTools()) {
+				if (["bash", "bash_execute", "run_command", "shell", "terminal_exec", "plan_update"].includes(tool.name)) continue;
+				if (!isReadOnlyToolRegistered(readOnlyRegistry, tool.name)) disabled.add(tool.name);
+			}
 		} else if (isDelegateMode) {
 			for (const toolName of DELEGATE_MODE_BLOCKED_TOOL_NAMES) {
 				disabled.add(toolName);
 			}
 		}
-		if (conv?.subagentAllowedTools && conv.subagentAllowedTools.size > 0) {
+		if (conv?.subagentAllowedTools) {
 			try {
 				for (const t of session.getAllTools()) {
 					if (!subagentAllowedToolVisible(conv.subagentAllowedTools, t.name)) {
@@ -11282,6 +11290,8 @@ export class ClientSession {
 								((ownerId ? this.convs.get(ownerId)?.agentPreset : undefined) ??
 									this.settingsSvc.current.defaultAgentPreset) === "reader"),
 						() => this.getLang(),
+
+						() => this.settingsSvc.getReadOnlyToolRegistry(),
 					),
 					() => this.delegateModeOf(ownerId),
 					() => this.getLang(),
@@ -11292,6 +11302,7 @@ export class ClientSession {
 			() => ({
 				mode: this.subagentSecurityModeOf(ownerId),
 				allowedTools: this.subagentAllowedToolsOf(ownerId),
+				readOnlyTools: this.settingsSvc.getReadOnlyToolRegistry(),
 			}),
 			() => this.getLang(),
 		);

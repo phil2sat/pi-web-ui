@@ -3033,6 +3033,20 @@ export interface UiPresetImportPreview {
  */
 export type SubagentSecurityMode = "normal" | "readonly" | "verify";
 
+export interface UiReadOnlyToolRule {
+	name: string;
+	parameter?: string;
+	values?: string[];
+	allowMissing?: boolean;
+}
+
+export interface UiSubagentToolInfo {
+	name: string;
+	description?: string;
+	actionParameter?: string;
+	actions?: string[];
+}
+
 export interface UiSubagentTemplate {
 	name: string;
 	description: string;
@@ -3050,6 +3064,8 @@ export interface UiSubagentTemplate {
 	 * 页面保存时原样回传 → 从此该模板显式固定，不再受名称关键字推断影响。
 	 */
 	securityMode?: SubagentSecurityMode;
+	allowedTools?: string[];
+	readOnlyTools?: UiReadOnlyToolRule[];
 }
 
 export interface UiVisionBridgeModel {
@@ -3270,6 +3286,8 @@ export interface UiSettingsState {
 	disabledMarkers: string[];
 	markers: UiMarkerInfo[];
 	subagentTemplates: UiSubagentTemplate[];
+	availableSubagentTools?: UiSubagentToolInfo[];
+	readOnlyToolRegistry?: UiReadOnlyToolRule[];
 	subagentDefaultModel: string | null;
 	subagentMaxDepth?: number;
 	subagentAutoWakeMaxTurns?: number;

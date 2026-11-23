@@ -5,6 +5,7 @@ import type { PromptMode } from "./client-state.js";
 import { isTraditionalLocale, type ServerLang } from "./i18n.js";
 import { BUILTIN_TEMPLATES_HANT } from "./subagent-templates-hant.js";
 import type { SubagentSecurityMode } from "./subagent-security-gate.js";
+import { normalizeReadOnlyToolRules, type ReadOnlyToolRule } from "./read-only-tool-registry.js";
 
 export const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
 
@@ -21,6 +22,8 @@ export interface SubagentTemplate {
 	thinkingLevel: string;
 	enabled: boolean;
 	securityMode?: SubagentSecurityMode;
+	allowedTools?: string[];
+	readOnlyTools?: ReadOnlyToolRule[];
 }
 
 export function pickTemplateDescription(t: { description: string; descriptionEn?: string }, lang: ServerLang): string {
@@ -602,6 +605,8 @@ function normalize(raw: unknown): SubagentTemplate | null {
 				: "",
 		enabled: o.enabled !== false,
 		securityMode: normalizeSecurityMode(o.securityMode),
+		allowedTools: Array.isArray(o.allowedTools) ? [...new Set(o.allowedTools.filter((x): x is string => typeof x === 'string' && /^[A-Za-z0-9_.:-]{1,160}$/.test(x)))].slice(0, 256) : undefined,
+		readOnlyTools: normalizeReadOnlyToolRules(o.readOnlyTools),
 	};
 }
 
@@ -697,11 +702,17 @@ export class SubagentTemplatesStore {
 			...t,
 			enabledSkills: [...t.enabledSkills],
 			enabledExtensions: [...t.enabledExtensions],
+			...(t.allowedTools ? { allowedTools: [...t.allowedTools] } : {}),
+			readOnlyTools: normalizeReadOnlyToolRules(t.readOnlyTools),
 		}));
 	}
 
 	get(name: string): SubagentTemplate | undefined {
 		return this.load().find((t) => t.name === name);
+	}
+
+	readOnlyToolRegistry(): ReadOnlyToolRule[] {
+		return normalizeReadOnlyToolRules(this.load().flatMap((template) => template.readOnlyTools ?? []));
 	}
 
 	async upsert(input: unknown): Promise<string | null> {

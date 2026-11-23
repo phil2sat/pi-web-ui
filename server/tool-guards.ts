@@ -65,6 +65,7 @@ export function withPlanModeGate(
 	def: ToolDefinition,
 	planMode: () => boolean,
 	getLang: () => ServerLang,
+	getReadOnlyToolRegistry?: () => readonly import('./read-only-tool-registry.js').ReadOnlyToolRule[],
 ): ToolDefinition {
 	return {
 		...def,
@@ -72,7 +73,7 @@ export function withPlanModeGate(
 			checkCancellation(args[2]);
 			if (planMode()) {
 				const params = args[1];
-				const denied = planModeDenial(def.name, params);
+				const denied = planModeDenial(def.name, params, getReadOnlyToolRegistry?.());
 				if (denied) {
 					const reason = pick(getLang(), denied.reason, denied.reasonEn);
 					const err = new Error(reason);

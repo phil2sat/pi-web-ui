@@ -9,6 +9,8 @@ import type {
 	UiSkillInfo,
 	UiSubagentTemplate,
 	UiVisionBridgeModel,
+	UiSubagentToolInfo,
+	UiReadOnlyToolRule,
 } from "../types";
 import { HintTip } from "./HintTip";
 
@@ -18,6 +20,8 @@ export interface SubagentTemplateWizardProps {
 	skills: UiSkillInfo[];
 	extensions: UiExtensionInfo[];
 	models: UiVisionBridgeModel[];
+	tools: UiSubagentToolInfo[];
+	readOnlyToolRegistry: UiReadOnlyToolRule[];
 	onChange: (draft: UiSubagentTemplate) => void;
 	onClose: () => void;
 	onSave: (draft: UiSubagentTemplate) => void;
@@ -50,6 +54,8 @@ export function SubagentTemplateWizard({
 	skills,
 	extensions,
 	models,
+	tools,
+	readOnlyToolRegistry,
 	onChange,
 	onClose,
 	onSave,
@@ -80,6 +86,8 @@ export function SubagentTemplateWizard({
 	const q = query.trim().toLowerCase();
 	const skillList = skills.filter((s) => !q || s.name.toLowerCase().includes(q));
 	const extList = extensions.filter((x) => !q || x.name.toLowerCase().includes(q));
+	const toolList = tools.filter((tool) => !q || tool.name.toLowerCase().includes(q) || (tool.description ?? "").toLowerCase().includes(q));
+	const readonlyForTemplate = draft.readOnlyTools ?? [];
 	const skillLimited = draft.enabledSkills.length > 0;
 	const extLimited = draft.enabledExtensions.length > 0;
 	const modelLabel = models.find((m) => `${m.provider}/${m.id}` === draft.model)?.label ?? draft.model;
@@ -280,7 +288,50 @@ export function SubagentTemplateWizard({
 											onChange={(e) => setQuery(e.target.value)}
 										/>
 									</div>
+									
 									<div className="tpl-pick-block">
+										<div className="tpl-pick-head"><span>Agent tools · {draft.allowedTools?.length ?? tools.length}</span><span className="tpl-wstatus">Unchecked tools are blocked for this subagent</span></div>
+										<p className="set-hint">Tools currently registered in this session, including extension and plugin tools. New tools appear when the server reloads its tool catalog.</p>
+										<div className="tpl-pick">
+											{toolList.map((tool) => {
+											const selected = draft.allowedTools === undefined || draft.allowedTools.includes(tool.name);
+											return <label key={tool.name} className={`tpl-chip${selected ? " on" : ""}`}>
+												<input type="checkbox" checked={selected} onChange={(event) => {
+													const current = new Set(draft.allowedTools ?? tools.map((entry) => entry.name));
+													if (event.target.checked) current.add(tool.name); else current.delete(tool.name);
+													patch({ allowedTools: [...current] });
+												}} />
+												<span>{tool.name}</span>
+												{readOnlyToolRegistry.some((rule) => rule.name === tool.name) && <small title="This tool has a registered read-only capability in Plan Mode">Plan read-only</small>}
+											</label>;
+										})}
+										</div>
+									</div>
+									<div className="tpl-pick-block">
+										<div className="tpl-pick-head"><span>Plan Mode read-only capabilities · {readonlyForTemplate.length}</span><span className="tpl-wstatus">Unknown tools remain blocked unless registered</span></div>
+										<p className="set-hint">Mark only tools or actions that are genuinely read-only. These rules are added to the central Plan Mode registry.</p>
+										{toolList.map((tool) => {
+											const existing = readonlyForTemplate.find((rule) => rule.name === tool.name);
+											const registered = readOnlyToolRegistry.find((rule) => rule.name === tool.name);
+											const actions = tool.actions ?? [];
+											const toggleAction = (action: string, enabled: boolean) => {
+												const next = readonlyForTemplate.filter((rule) => rule.name !== tool.name);
+												const values = new Set(existing?.values ?? []);
+												if (enabled) values.add(action); else values.delete(action);
+												if (values.size > 0) next.push({ name: tool.name, parameter: tool.actionParameter!, values: [...values] });
+												patch({ readOnlyTools: next });
+											};
+											const toggleWhole = (enabled: boolean) => {
+												const next = readonlyForTemplate.filter((rule) => rule.name !== tool.name);
+												if (enabled) next.push({ name: tool.name });
+												patch({ readOnlyTools: next });
+											};
+											return <div className="tpl-chip" key={`ro-${tool.name}`}>
+												{tool.actionParameter && actions.length > 0 ? <span>{tool.name}: {actions.map((action) => <label key={action}><input type="checkbox" checked={Boolean(existing?.values?.includes(action) || registered?.values?.includes(action))} disabled={Boolean(registered?.values?.includes(action) && !existing?.values?.includes(action))} onChange={(event) => toggleAction(action, event.target.checked)} />{action} </label>)}</span> : <label><input type="checkbox" checked={Boolean((existing && !existing.parameter) || (registered && !registered.parameter))} disabled={Boolean(registered && !registered.parameter && !(existing && !existing.parameter))} onChange={(event) => toggleWhole(event.target.checked)} />{tool.name}</label>}
+											</div>;
+										})}
+									</div>
+<div className="tpl-pick-block">
 										<div className="tpl-pick-head">
 											<span>
 												{t("tplSkillsLabel")} · {draft.enabledSkills.length}

@@ -44,6 +44,7 @@ import {
 	CONVERSATION_TOOL_NAMES,
 	isConversationTool,
 } from "./conversation-tool-names.js";
+import { DEFAULT_READ_ONLY_TOOL_REGISTRY, readOnlyRuleAllows, type ReadOnlyToolRule } from "./read-only-tool-registry.js";
 
 export const SESSION_DISPATCH_TOOLS = new Set<string>(["delegate_task", "schedule", "communicate"]);
 
@@ -376,55 +377,13 @@ export function syncTerminalReadOnlySchema(session: { _toolRegistry?: Map<string
 	tool.parameters = readOnly ? restrictTerminalToolToReadOnly({ parameters }).parameters : parameters;
 }
 
-export function readOnlyToolCallAllowed(name: string, params: unknown): boolean {
-	const p = params && typeof params === "object" ? (params as Record<string, unknown>) : {};
-	if (name === "terminal") return ["list", "read", "wait"].includes(String(p.action ?? ""));
-	if (
-		[
-			"read",
-			"grep",
-			"find",
-			"ls",
-			"obs_recall",
-			"present_files",
-			"conversation_read",
-			"terminal_read",
-			"terminal_list",
-			"terminal_wait",
-			"load_tools",
-			"tool_search",
-			"compact_context",
-			"ask_user_question",
-			"search_web",
-			"read_url",
-		].includes(name)
-	)
-		return true;
-	// 搜索已并入 browser_use(action="search")；只读搜索在计划模式下仍然放行
-	if (name === "browser_use") return String(p.action ?? "") === "search";
-	const action = typeof p.action === "string" ? p.action : "";
-	if (name === "skill") return !action || ["read", "list", "report"].includes(action);
-	if (name === "scm") return !action || ["status", "diff", "log", "history", "branches", "show"].includes(action);
-	if (isConversationTool(name)) return isReadOnlyConversationAction(action);
-	if (name === "claim_files") return !action || action === "list";
-	if (name === "notes") return p.op === "list";
-	if (name === "remote_term") return action === "list";
-	if (name === "canvas") return ["list", "get", "get_log", "card_list"].includes(action);
-	if (name === "worktree") return action === "list";
-	if (name === "lsp")
-		return [
-			"definition",
-			"references",
-			"hover",
-			"diagnostics",
-			"documentSymbol",
-			"workspaceSymbol",
-			"read_symbol",
-			"cascade",
-		].includes(action);
-	if (name === "browser_page") return ["pages", "read", "shot"].includes(String(p.op));
-	if (name === "browser_script") return ["list", "status"].includes(String(p.action));
-	return false;
+export function readOnlyToolCallAllowed(name: string, params: unknown, registry: readonly ReadOnlyToolRule[] = DEFAULT_READ_ONLY_TOOL_REGISTRY): boolean {
+	if (BYPASS_TOOLS.has(name) || BLOCKED_TOOLS.has(name) || TERMINAL_WRITE_TOOLS.has(name)) return false;
+	if (isConversationTool(name)) {
+		const action = params && typeof params === "object" ? (params as Record<string, unknown>).action : undefined;
+		return isReadOnlyConversationAction(typeof action === "string" ? action.trim().toLowerCase() : "");
+	}
+	return readOnlyRuleAllows(registry, name, params);
 }
 
 export interface PlanModeDenial {
@@ -433,7 +392,7 @@ export interface PlanModeDenial {
 	kind: "write-tool" | "bash" | "bypass-tool";
 }
 
-export function planModeDenial(toolName: string, params: unknown): PlanModeDenial | undefined {
+export function planModeDenial(toolName: string, params: unknown, registry: readonly ReadOnlyToolRule[] = DEFAULT_READ_ONLY_TOOL_REGISTRY): PlanModeDenial | undefined {
 	const name = (toolName ?? "").trim();
 	if (isConversationTool(name)) {
 		const action =
@@ -477,7 +436,7 @@ export function planModeDenial(toolName: string, params: unknown): PlanModeDenia
 			reasonEn: `Plan mode: only read-only commands are allowed; rejected: \`${cmd.slice(0, 200)}\`. Use read/grep or read-only git (status/diff/log). Put proposed changes in the plan and wait for the user's go-ahead.`,
 		};
 	}
-	if (BLOCKED_TOOLS.has(name) || (name !== "plan_update" && !readOnlyToolCallAllowed(name, params))) {
+	if (BLOCKED_TOOLS.has(name) || (name !== "plan_update" && !readOnlyToolCallAllowed(name, params, registry))) {
 		return {
 			kind: "write-tool",
 			reason: `计划模式：只规划不实施，${name} 被拒。请把这一步写进计划（plan_update 步骤 + 计划正文），等用户确认后在新一轮里实施。`,

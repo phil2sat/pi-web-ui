@@ -8,6 +8,7 @@ import {
 	isConversationTool,
 } from "./conversation-tool-names.js";
 import type { SubagentSecurityMode } from "./protocol.js";
+import type { ReadOnlyToolRule } from "./read-only-tool-registry.js";
 
 // 协议单源：类型定义在 protocol.ts（前端也要用），这里只做转出沿用既有 import 路径。
 export type { SubagentSecurityMode };
@@ -207,10 +208,11 @@ export function subagentSecurityDenial(
 	toolName: string,
 	params: unknown,
 	allowedTools?: Set<string>,
+	readOnlyTools?: readonly ReadOnlyToolRule[],
 ): SubagentSecurityDenial | undefined {
 	const name = (toolName ?? "").trim();
 
-	if (allowedTools && allowedTools.size > 0 && !subagentAllowedToolCall(allowedTools, name, params)) {
+	if (allowedTools && !subagentAllowedToolCall(allowedTools, name, params)) {
 		return {
 			kind: "not-allowed-tool",
 			reason: `受限子代理：工具 "${name}" 不在本次任务允许的工具白名单内（仅限：${[...allowedTools].join(", ")}）。`,
@@ -300,7 +302,7 @@ export function subagentSecurityDenial(
 		return undefined;
 	}
 
-	if (!readOnlyToolCallAllowed(name, params)) {
+	if (!readOnlyToolCallAllowed(name, params, readOnlyTools)) {
 		return {
 			kind: "not-allowed-tool",
 			reason: `受限子代理（${mode}）：工具 "${name}" 的本次调用未声明为只读，已拒绝。请使用 read/grep 或结构化查询。`,
@@ -312,7 +314,7 @@ export function subagentSecurityDenial(
 
 export function withSubagentSecurityGate(
 	def: ToolDefinition,
-	getSecurityInfo: () => { mode?: SubagentSecurityMode; allowedTools?: Set<string> },
+	getSecurityInfo: () => { mode?: SubagentSecurityMode; allowedTools?: Set<string>; readOnlyTools?: readonly ReadOnlyToolRule[] },
 	getLang: () => ServerLang,
 ): ToolDefinition {
 	return {
@@ -322,9 +324,9 @@ export function withSubagentSecurityGate(
 			const mode = info.mode ?? "normal";
 			const allowedTools = info.allowedTools;
 
-			if (mode !== "normal" || (allowedTools && allowedTools.size > 0)) {
+			if (mode !== "normal" || allowedTools !== undefined) {
 				const params = args[1];
-				const denied = subagentSecurityDenial(mode, def.name, params, allowedTools);
+				const denied = subagentSecurityDenial(mode, def.name, params, allowedTools, info.readOnlyTools);
 				if (denied) {
 					return {
 						content: [{ type: "text", text: pick(getLang(), denied.reason, denied.reasonEn) }],
