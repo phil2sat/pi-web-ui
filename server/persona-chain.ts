@@ -20,6 +20,19 @@ export function splitAgentStartPrompt(event: {
 	}
 }
 
+/** Apply a subagent role prompt through the SDK's structured custom-prompt option. */
+export function applySubagentTemplateCustomPrompt(
+	event: { systemPromptOptions?: { customPrompt?: string; forceSystemPrompt?: string } },
+	prompt: string,
+): boolean {
+	const customPrompt = prompt.trim();
+	const options = event.systemPromptOptions;
+	if (!customPrompt || !options) return false;
+	options.customPrompt = customPrompt;
+	options.forceSystemPrompt = undefined;
+	return true;
+}
+
 export const PI_DOC_PATHS = (() => {
 	try {
 		const requireLocal = createRequire(import.meta.url);
