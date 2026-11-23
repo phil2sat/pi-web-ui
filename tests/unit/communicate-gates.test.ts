@@ -101,3 +101,11 @@ describe("sandbox communication gate", () => {
 			);
 	});
 });
+
+
+describe("plan mode read-only tool aliases", () => {
+	it.each(["search_web", "read_url"])("allows %s without enabling writes", (name) => {
+		expect(readOnlyToolCallAllowed(name, {})).toBe(true);
+		expect(planModeDenial(name, {})).toBeUndefined();
+	});
+});
