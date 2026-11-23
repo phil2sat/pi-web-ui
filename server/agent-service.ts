@@ -10399,7 +10399,6 @@ export class ClientSession {
 								),
 								() => this.planModeOf(ownerId),
 								() => this.getLang(),
-
 								() => this.settingsSvc.getReadOnlyToolRegistry(),
 							),
 							() => this.delegateModeOf(ownerId),
@@ -11290,7 +11289,6 @@ export class ClientSession {
 								((ownerId ? this.convs.get(ownerId)?.agentPreset : undefined) ??
 									this.settingsSvc.current.defaultAgentPreset) === "reader"),
 						() => this.getLang(),
-
 						() => this.settingsSvc.getReadOnlyToolRegistry(),
 					),
 					() => this.delegateModeOf(ownerId),

@@ -56,7 +56,8 @@ export function readOnlyRuleAllows(rules: readonly ReadOnlyToolRule[], name: str
 	const rule = rules.find((item) => item.name === name);
 	if (!rule) return false;
 	if (!rule.parameter) return true;
-	if (!Array.isArray(rule.values) || rule.values.length === 0 || !params || typeof params !== "object") return false;
+	if (!params || typeof params !== "object") return rule.allowMissing === true;
 	const value = (params as Record<string, unknown>)[rule.parameter];
-	return typeof value === "string" && rule.values.includes(value);
+	if (value === undefined || value === null || value === "") return rule.allowMissing === true;
+	return Array.isArray(rule.values) && rule.values.includes(String(value));
 }
