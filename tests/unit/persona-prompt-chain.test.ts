@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitAgentStartPrompt } from "../../server/agent-service.js";
+import { applySubagentTemplateCustomPrompt, splitAgentStartPrompt } from "../../server/persona-chain.js";
 
 function fakeEvent(forced?: string) {
 	const systemPromptOptions: { forceSystemPrompt?: string } = {};
@@ -11,6 +11,29 @@ function fakeEvent(forced?: string) {
 		},
 	};
 }
+
+describe("applySubagentTemplateCustomPrompt", () => {
+	it("uses the SDK customPrompt option and clears a stale forced prompt", () => {
+		const event = {
+			systemPromptOptions: {
+				customPrompt: "old prompt",
+				forceSystemPrompt: "stale forced prompt",
+				sections: { device_execution: "preserve this section" },
+			},
+		};
+		expect(applySubagentTemplateCustomPrompt(event, "  role template  ")).toBe(true);
+		expect(event.systemPromptOptions).toEqual({
+			customPrompt: "role template",
+			forceSystemPrompt: undefined,
+			sections: { device_execution: "preserve this section" },
+		});
+	});
+
+	it("does not mutate events without structured prompt options", () => {
+		expect(applySubagentTemplateCustomPrompt({}, "role template")).toBe(false);
+		expect(applySubagentTemplateCustomPrompt({ systemPromptOptions: {} }, "  ")).toBe(false);
+	});
+});
 
 describe("splitAgentStartPrompt", () => {
 	const base = "BASE PROMPT\n\nAvailable tools:\nread";
