@@ -395,6 +395,8 @@ export function readOnlyToolCallAllowed(name: string, params: unknown): boolean 
 			"tool_search",
 			"compact_context",
 			"ask_user_question",
+			"search_web",
+			"read_url",
 		].includes(name)
 	)
 		return true;
