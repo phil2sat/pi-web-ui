@@ -639,7 +639,7 @@ export class SettingsService {
 		try {
 			return this.host.getSession().getAllTools().map((tool) => {
 				const parameters = tool.parameters as { properties?: Record<string, { enum?: unknown[] }> } | undefined;
-				const actionParameter = ["action", "op"].find((key) => parameters?.properties?.[key]);
+				const actionParameter = ["action", "op"].find((key) => parameters?.properties?.[key]) ?? Object.keys(parameters?.properties ?? {}).find((key) => Array.isArray(parameters?.properties?.[key]?.enum));
 				const values = actionParameter ? parameters?.properties?.[actionParameter]?.enum : undefined;
 				return {
 					name: tool.name,

@@ -295,6 +295,7 @@ export function SubagentTemplateWizard({
 										<div className="tpl-pick">
 											{toolList.map((tool) => {
 											const selected = draft.allowedTools === undefined || draft.allowedTools.includes(tool.name);
+											const readOnlyRule = readOnlyToolRegistry.find((rule) => rule.name === tool.name);
 											return <label key={tool.name} className={`tpl-chip${selected ? " on" : ""}`}>
 												<input type="checkbox" checked={selected} onChange={(event) => {
 													const current = new Set(draft.allowedTools ?? tools.map((entry) => entry.name));
@@ -302,7 +303,7 @@ export function SubagentTemplateWizard({
 													patch({ allowedTools: [...current] });
 												}} />
 												<span>{tool.name}</span>
-												{readOnlyToolRegistry.some((rule) => rule.name === tool.name) && <small title="This tool has a registered read-only capability in Plan Mode">Plan read-only</small>}
+												{readOnlyRule ? <small title="This tool has a registered read-only capability in Plan Mode">{readOnlyRule.parameter ? `Plan read-only: ${readOnlyRule.values?.join(", ") ?? "selected actions"}` : "Plan read-only"}</small> : <small className="tpl-badge" title="This tool is blocked in Plan Mode unless a read-only rule is configured">Not read-only in Plan Mode</small>}
 											</label>;
 										})}
 										</div>

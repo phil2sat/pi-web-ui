@@ -17,7 +17,7 @@ describe("configurable subagent read-only capabilities", () => {
 
 	it("enforces an explicit empty template allowlist", () => {
 		expect(
-			subagentSecurityDenial("normal", "plugin_lookup", {}, new Set(), [{ name: "plugin_lookup" }])?.kind,
+			subagentSecurityDenial("normal", "plugin_lookup", {}, new Set<string>(), [{ name: "plugin_lookup" }])?.kind,
 		).toBe("not-allowed-tool");
 	});
 
