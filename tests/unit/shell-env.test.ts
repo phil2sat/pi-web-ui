@@ -111,10 +111,13 @@ describe("交互式登录 shell 的 PATH 捕获", () => {
 		expect(isAbsolutePathEntry("\\\\server\\share", "win32")).toBe(true);
 	});
 	it("抓不到（shell 不存在）时安静失败，PATH 原样不动", async () => {
-		const env = { SHELL: join(root, "missing-shell"), PATH: "/usr/bin" };
+		// PATH 指向空目录：不能用 /usr/bin——Arch 等发行版的系统包把 npm 装在那里，会走 skipped 分支。
+		const emptyBin = join(root, "empty-bin");
+		mkdirSync(emptyBin);
+		const env = { SHELL: join(root, "missing-shell"), PATH: emptyBin };
 		const result = await augmentNodePathFromShell({ platform: "linux", env, timeoutMs: 1200 });
 		expect(result.reason).toBe("failed");
 		expect(result.timeoutMs).toBe(1200);
-		expect(env.PATH).toBe("/usr/bin");
+		expect(env.PATH).toBe(emptyBin);
 	});
 });
