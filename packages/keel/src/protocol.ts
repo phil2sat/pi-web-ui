@@ -15,7 +15,6 @@ export interface DeviceTaskProgress extends DeviceTaskActivity {
 	attemptId: string;
 	sequence: number;
 }
-
 export interface DeviceTaskPlanReadyFrame {
 	type: "task_plan_ready";
 	taskId: string;

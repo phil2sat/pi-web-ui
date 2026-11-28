@@ -122,7 +122,7 @@ describe("backslash math delimiters", () => {
 		const requiredKatex = rehypePkg.dependencies?.katex;
 		expect(katexVersion).toBeDefined();
 		expect(requiredKatex).toBeDefined();
-		expect(katexVersion).toMatch(/^\^?0\.16\./);
+		expect(katexVersion).toMatch(/^\^?0\.(?:16|19)\./);
 	});
 
 	it("ensures katex css or application stylesheet defines layout rules for stretchy containers (issue #670)", () => {

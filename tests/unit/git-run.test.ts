@@ -49,7 +49,7 @@ describe.skipIf(!hasGit)("runGit：git 调用单源", () => {
 
 	it("失败时抛出的消息取 stderr 首行", async () => {
 		const cwd = tempRepo();
-		const result = await runGit(["rev-parse", "--verify", "no-such-ref"], { cwd });
+		const result = await runGit(["rev-parse", "--verify", "no-such-ref"], { cwd, env: { LC_ALL: "C" } });
 		expect(result.ok).toBe(false);
 		expect(gitFailureMessage(result)).toMatch(/no-such-ref|Needed a single revision|unknown revision/i);
 		await expect(runGitText(["rev-parse", "--verify", "no-such-ref"], { cwd })).rejects.toThrow();

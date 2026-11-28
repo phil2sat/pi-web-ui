@@ -66,6 +66,7 @@ const ROOT_ALLOWLIST = new Set([
 	".git",
 	".github",
 	".vscode",
+	".nvmrc",
 	"node_modules",
 	// —— 运行时数据与产物落点（不入库）
 	".pi",

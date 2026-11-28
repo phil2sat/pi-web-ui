@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 const ROOT = join(__dirname, "..", "..");
 const EDITOR_SRC = readFileSync(join(ROOT, "web", "src", "components", "IconEditor.tsx"), "utf8");
 const SETTINGS_SRC = readFileSync(join(ROOT, "web", "src", "components", "SettingsModal.tsx"), "utf8");
+const LAYOUT_SRC = readFileSync(join(ROOT, "web", "src", "components", "settings", "LayoutTab.tsx"), "utf8");
 const STYLES_SRC = readFileSync(join(ROOT, "web", "src", "styles.css"), "utf8");
 const ZH = JSON.parse(readFileSync(join(ROOT, "web", "src", "i18n", "messages", "core", "zh.json"), "utf8")) as Record<
 	string,
@@ -74,7 +75,8 @@ describe("图标编辑：文案纯中文", () => {
 
 	it("设置里的对齐下拉 / 分段标题也走中文标签，不再手写 start/center/end", () => {
 		expect(SETTINGS_SRC).not.toContain('value="start">start</option>');
-		expect(SETTINGS_SRC).toContain("alignLabel(t, al, verticalAlignSlot(slot))");
-		expect(SETTINGS_SRC).toContain("alignLabel(t, seg.align as UiAlign, verticalAlignSlot(slot))");
+		expect(LAYOUT_SRC).not.toContain('value="start">start</option>');
+		expect(LAYOUT_SRC).toContain("alignLabel(t, al, verticalAlignSlot(slot))");
+		expect(LAYOUT_SRC).toContain("alignLabel(t, seg.align as UiAlign, verticalAlignSlot(slot))");
 	});
 });
